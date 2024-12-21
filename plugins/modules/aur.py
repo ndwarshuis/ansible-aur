@@ -112,7 +112,7 @@ EXAMPLES = """
 def_lang = ["env", "LC_ALL=C", "LANGUAGE=C"]
 
 use_cmd = {
-    "yay": ["yay", "-S", "--noconfirm", "--needed", "--cleanafter"],
+    "yay": ["yay", "-S", "--noconfirm", "--needed", "--cleanafter", "--batchinstall"],
     "paru": ["paru", "-S", "--noconfirm", "--needed", "--cleanafter"],
     "pacaur": ["pacaur", "-S", "--noconfirm", "--noedit", "--needed"],
     "trizen": ["trizen", "-S", "--noconfirm", "--noedit", "--needed"],
@@ -331,29 +331,46 @@ def install_packages(
 
     changed_iter = False
 
-    for package in packages:
-        if state == "present":
-            if package_installed(module, package):
-                rc = 0
-                continue
-        if use == "makepkg":
-            rc, out, err = install_with_makepkg(
-                module, package, extra_args, skip_pgp_check, ignore_arch, local_pkgbuild
-            )
-        elif local_pkgbuild:
-            rc, out, err = install_local_package(
-                module, package, use, extra_args, local_pkgbuild
-            )
+    # yay is special since it can install multiple things at once, which helps
+    # with dependency cycles. The others might be able to do this too, but
+    # I use yay so whatever
+    if use == "yay":
+        if state == "present" and all(package_installed(module, p) for p in packages):
+            rc = 0
         else:
             command = build_command_prefix(
                 use, extra_args, aur_only=aur_only, update_cache=update_cache
             )
-            command.append(package)
-            rc, out, err = module.run_command(command, check_rc=True)
+            rc, out, err = module.run_command(command + packages, check_rc=True)
+    else:
+        for package in packages:
+            if state == "present":
+                if package_installed(module, package):
+                    rc = 0
+                    continue
+            if use == "makepkg":
+                rc, out, err = install_with_makepkg(
+                    module,
+                    package,
+                    extra_args,
+                    skip_pgp_check,
+                    ignore_arch,
+                    local_pkgbuild,
+                )
+            elif local_pkgbuild:
+                rc, out, err = install_local_package(
+                    module, package, use, extra_args, local_pkgbuild
+                )
+            else:
+                command = build_command_prefix(
+                    use, extra_args, aur_only=aur_only, update_cache=update_cache
+                )
+                command.append(package)
+                rc, out, err = module.run_command(command, check_rc=True)
 
-        changed_iter = changed_iter or not (
-            out == "" or "-- skipping\n" in out or "nothing to do" in out.lower()
-        )
+            changed_iter = changed_iter or not (
+                out == "" or "-- skipping\n" in out or "nothing to do" in out.lower()
+            )
 
     message = "installed package(s)" if changed_iter else "package(s) already installed"
 
