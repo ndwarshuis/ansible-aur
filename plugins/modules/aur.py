@@ -112,7 +112,15 @@ EXAMPLES = """
 def_lang = ["env", "LC_ALL=C", "LANGUAGE=C"]
 
 use_cmd = {
-    "yay": ["yay", "-S", "--noconfirm", "--needed", "--cleanafter", "--batchinstall"],
+    "yay": [
+        "yay",
+        "-S",
+        "--noconfirm",
+        "--needed",
+        "--cleanafter",
+        "--batchinstall",
+        "--removemake",
+    ],
     "paru": ["paru", "-S", "--noconfirm", "--needed", "--cleanafter"],
     "pacaur": ["pacaur", "-S", "--noconfirm", "--noedit", "--needed"],
     "trizen": ["trizen", "-S", "--noconfirm", "--noedit", "--needed"],
